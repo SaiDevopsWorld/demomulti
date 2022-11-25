@@ -1,0 +1,41 @@
+---
+- hosts: webservers
+  tasks:
+  - name: create user tomcat
+    user:
+      name: tomcat
+      comment: tomcat user
+      create_home: yes
+      home: /opt/tomcat
+      shell: /bin/false
+  - name: install java jdk
+    apt: pkg=default-jdk state=present
+  - name: download tomcat binary
+    get_url:
+      url: "https://dlcdn.apache.org/tomcat/tomcat-10/v10.0.27/bin/apache-tomcat-10.0.27.tar.gz"
+      dest: "/tmp/tomcat10.0.27.tar.gz"
+      mode: '0766'
+  - name: extract tomcat binary
+    unarchive:
+      src: /tmp/tomcat10.0.27.tar.gz
+      dest: /opt/tomcat
+      remote_src: yes
+      extra_opts:
+      - "--strip-components=1"
+  - name: change the permissions /opt/tomcat/bin
+    file: path=/opt/tomcat/bin owner=tomcat group=tomcat mode=0775 state=directory recurse=yes
+  - name: change the permissions /opt/tomcat
+    file: path=/opt/tomcat owner=tomcat group=tomcat mode=0775 state=directory recurse=yes
+  - name: copy context.xml
+    copy: src=/etc/ansible/tomcat_files/context.xml dest=/opt/tomcat/webapps/host-manager/META-INF/context.xml
+  - name: copy tomcat service
+    copy: src=/etc/ansible/tomcat_files/tomcat.service dest=/etc/systemd/system/tomcat.service
+  - name: copy tomcat server.xml
+    copy: src=/etc/ansible/tomcat_files/server.xml dest=/opt/tomcat/conf/server.xml
+  - name: restart tomcat
+    service: name=tomcat state=restarted
+    sudo: yes
+  - name: copy the helloworld.war from jenkins to the application server
+    copy: src=/var/lib/jenkins/workspace/mvn-git-ansible-int/target/sampleapp.war dest=/opt/tomcat/webapps
+   
+
